@@ -36,8 +36,8 @@ mapping to off-site identifiers.
 ## How?
 
 A Hive instance is configured to run on each site with knowledge of the local DNS search path (e.g. `west.example.com`),
-and the local IP address range. It presents itself as an RFC2136 compatible DNS server, listening for DHCP driven
-dynamic DNS update commands from both the local DHCP server, and the Hive instances of other sites.
+and the local IP address range (e.g. `10.0.0.0/16`). It presents itself as an RFC2136 compatible DNS server, listening
+for DHCP driven dynamic DNS update commands from both the local DHCP server, and the Hive instances of other sites.
 
 These host device records are transformed to the rendezvous DNS search path suffix (e.g. `rdvu.example.com`), and then
 forwarded as CNAME mappings via RFC2136 updates to the site's primary DNS server. Host address mappings from the local
@@ -51,6 +51,6 @@ dropped if a mapping from a local IP address range is active.
 - For `foo` tunneled to both `west.example.com` and `east.example.com`, clients on the `west` site will resolve
   `foo.rdvu.example.com` &rarr; `foo.west.example.com` &rarr; `10.0.0.100`, but clients on the `east` site will resolve
   e.g. `foo.rdvu.example.com` &rarr; `foo.east.example.com` &rarr; `10.1.0.103`
-- For `foo` and `bar` both tunneled to the `west` and `east` sites, both clients will resolve based on their own tunnel
-  priority order, but should achieve connectivity regardless. In practice, multi-site tunneling clients should order
-  their tunnels from highest to lowest tunnel link bandwidth for best performance.
+- For `foo` and `bar` both tunneled to the `west` and `east` sites trying to connect to each other, both clients will
+  resolve based on their own tunnel priority order, but should achieve connectivity regardless. In practice, multi-site
+  tunneling clients should order their tunnels from highest to lowest tunnel link bandwidth for best performance.
