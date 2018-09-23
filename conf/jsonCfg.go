@@ -27,6 +27,7 @@ type parseConfiguration struct {
 
 func (pc *parseConfiguration) inhabitConfig(c *Configuration) error {
 	c.SearchSuffix = pc.SearchSuffix
+	c.ForwardAll = pc.ForwardAll
 	if addr, err := net.ResolveIPAddr("ip", pc.ZonePrimary); err != nil {
 		return fmt.Errorf("zone primary address '%v' invalid: %v", pc.ZonePrimary, err)
 	} else {

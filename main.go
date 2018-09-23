@@ -27,6 +27,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	key, err := conf.ParseKeyfile(dnsKeyFile)
+	if err != nil {
+		fmt.Printf("Error processing key file: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Operational sequence:
 	// 1) Zone transfer from the zone primary DNS server to populate transient cache (no persistent caching in Hive)
 	// 2) Start listening for DNS update requests from peers (and/or DHCP servers)
