@@ -51,6 +51,12 @@ func main() {
 		A: func(proposer net.Addr, name string, target net.IP) {
 			fmt.Printf("%v proposed '%s' -> '%v'\n", proposer, name, target)
 		},
+		Serial: func() uint32 {
+			return 1
+		},
+		Transfer: func(zone string) []xform.Mapping {
+			return nil
+		},
 	})
 	// 3) Zone transfer from all peers to augment transient structures
 	// 4) Clean up any stale rendezvous records
