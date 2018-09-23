@@ -7,31 +7,47 @@ import (
 	"net"
 )
 
+type ZonePeer struct {
+	Suffix string   // e.g. west.example.com.
+	Server net.Addr // e.g. 10.1.0.1
+}
+
 type Configuration struct {
 	LocalNets    []*net.IPNet // e.g. [10.1.0.0/16]
-	SearchSuffix string       // e.g. rdvu.example.com
-	Peers        []net.Addr   // e.g. [10.0.0.2]
-	ZonePrimary  net.Addr     // e.g. 10.1.0.1
-	BindAddress  net.Addr     // e.g. 10.1.0.2
-	ForwardAll   bool         // whether to pass through all DNS updates to the zone primary, or just rendezvous CNAMEs
+	LocalZone    *ZonePeer
+	SearchSuffix string      // e.g. rdvu.example.com.
+	Peers        []*ZonePeer // e.g. [10.0.0.2]
+	BindAddress  net.Addr    // e.g. 10.1.0.2
+	ForwardAll   bool        // whether to pass through all DNS updates to the zone primary, or just rendezvous CNAMEs
+}
+
+type parsePeer struct {
+	Suffix string `json:"suffix"`
+	Server string `json:"server"`
 }
 
 type parseConfiguration struct {
-	LocalNets    []string `json:"localNets"`
-	SearchSuffix string   `json:"searchSuffix"`
-	Peers        []string `json:"peers"`
-	ZonePrimary  string   `json:"zonePrimary"`
-	BindAddress  string   `json:"bindAddress"`
-	ForwardAll   bool     `json:"forwardAll"`
+	LocalNets    []string     `json:"localNets"`
+	LocalZone    *parsePeer   `json:"localZone"`
+	SearchSuffix string       `json:"searchSuffix"`
+	Peers        []*parsePeer `json:"peers"`
+	BindAddress  string       `json:"bindAddress"`
+	ForwardAll   bool         `json:"forwardAll"`
 }
 
 func (pc *parseConfiguration) inhabitConfig(c *Configuration) error {
 	c.SearchSuffix = pc.SearchSuffix
 	c.ForwardAll = pc.ForwardAll
-	if addr, err := net.ResolveIPAddr("ip", pc.ZonePrimary); err != nil {
-		return fmt.Errorf("zone primary address '%v' invalid: %v", pc.ZonePrimary, err)
+	if pc.LocalZone == nil {
+		return fmt.Errorf("localZone must be specified")
+	}
+	c.LocalZone = &ZonePeer{
+		Suffix: pc.LocalZone.Suffix,
+	}
+	if addr, err := net.ResolveIPAddr("ip", pc.LocalZone.Server); err != nil {
+		return fmt.Errorf("zone primary address '%v' invalid: %v", pc.LocalZone.Server, err)
 	} else {
-		c.ZonePrimary = addr
+		c.LocalZone.Server = addr
 	}
 	if pc.BindAddress != "" {
 		if addr, err := net.ResolveIPAddr("ip", pc.BindAddress); err != nil {
@@ -48,10 +64,13 @@ func (pc *parseConfiguration) inhabitConfig(c *Configuration) error {
 		}
 	}
 	for idx, peer := range pc.Peers {
-		if addr, err := net.ResolveIPAddr("ip", peer); err != nil {
+		if addr, err := net.ResolveIPAddr("ip", peer.Server); err != nil {
 			return fmt.Errorf("peer %d with value '%v' invalid: %v", idx, peer, err)
 		} else {
-			c.Peers = append(c.Peers, addr)
+			c.Peers = append(c.Peers, &ZonePeer{
+				Suffix: peer.Suffix,
+				Server: addr,
+			})
 		}
 	}
 	return nil

@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/thyth/hive/conf"
+	"github.com/thyth/hive/xform"
 
 	"flag"
 	"fmt"
@@ -34,11 +35,17 @@ func main() {
 	}
 
 	// Operational sequence:
-	// 1) Zone transfer from the zone primary DNS server to populate transient cache (no persistent caching in Hive)
+	// 1) Zone transfer from the local primary DNS server to populate transient cache (no persistent caching in Hive)
+	localZone, err := xform.ReadZoneEntries(config.LocalZone.Server, key, config.LocalZone.Suffix)
+	if err != nil {
+		fmt.Printf("Zone transfer from primary failed: %v", err)
+		os.Exit(1)
+	}
+	fmt.Println(localZone)
 	// 2) Start listening for DNS update requests from peers (and/or DHCP servers)
 	// 3) Zone transfer from all peers to augment transient structures
 	// 4) Clean up any stale rendezvous records
-	// 5) Prioritize A/AAAA records for local networks, and update CNAME rendezvous records in zone primary server
+	// 5) Prioritize A/AAAA records for local networks, and update CNAME rendezvous records in local primary server
 	// 6) Continue to update rendezvous records as updates arrive
 	// TODO all of the 6 steps above
 }
