@@ -18,16 +18,31 @@ type PeerCallbacks struct {
 }
 
 func StartServer(config *conf.Configuration, key *conf.TsigKey, callbacks *PeerCallbacks) {
-	server := &dns.Server{
+	tsig := map[string]string{key.ZoneName: key.Key}
+
+	// run both UDP and TCP, since TCP is usually used for zone transfers
+	serverUdp := &dns.Server{
 		Addr:       config.BindAddress.String() + ":53",
 		Net:        "udp",
-		TsigSecret: map[string]string{key.ZoneName: key.Key},
+		TsigSecret: tsig,
 	}
+	serverTcp := &dns.Server{
+		Addr:       config.BindAddress.String() + ":53",
+		Net:        "tcp",
+		TsigSecret: tsig,
+	}
+
 	go func() {
-		if err := server.ListenAndServe(); err != nil {
+		if err := serverUdp.ListenAndServe(); err != nil {
 			panic(err)
 		}
 	}()
+	go func() {
+		if err := serverTcp.ListenAndServe(); err != nil {
+			panic(err)
+		}
+	}()
+
 	dns.HandleFunc(".", handlerGenerator(config, key, callbacks))
 }
 
@@ -68,8 +83,16 @@ func handlerGenerator(config *conf.Configuration, key *conf.TsigKey, callbacks *
 					}
 				}
 			}
+		} else if request.Opcode == dns.OpcodeQuery {
+			// zone transfers
+			for _, question := range request.Question {
+				if question.Qclass == dns.ClassINET &&
+					question.Qtype == dns.TypeAXFR {
+					fmt.Printf("Transfer requested for '%v'\n", question.Name)
+					// TODO figure out callback signature and how to reply to transfer
+				}
+			}
 		} else {
-			// TODO AXFRs
 			fmt.Println(request.String())
 		}
 		msg := &dns.Msg{}

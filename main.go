@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"time"
 )
 
 func main() {
@@ -53,10 +52,10 @@ func main() {
 			fmt.Printf("%v proposed '%s' -> '%v'\n", proposer, name, target)
 		},
 	})
-	time.Sleep(5 * time.Minute) // FIXME temporary for testing
 	// 3) Zone transfer from all peers to augment transient structures
 	// 4) Clean up any stale rendezvous records
 	// 5) Prioritize A/AAAA records for local networks, and update CNAME rendezvous records in local primary server
 	// 6) Continue to update rendezvous records as updates arrive
 	// TODO all of the 6 steps above
+	select {}
 }
