@@ -11,8 +11,9 @@ import (
 
 type Zone struct {
 	sync.Mutex
-	Server net.Addr
-	M      map[string]net.IP
+	Server       net.Addr
+	ARecords     map[string]net.IP
+	CNAMERecords map[string]string
 }
 
 // ReadZoneEntries will zone transfer and look at A and AAAA records.
@@ -29,7 +30,8 @@ func ReadZoneEntries(dnsServer net.Addr, key *conf.TsigKey, zone string) (*Zone,
 	if err != nil {
 		return nil, err
 	}
-	m := map[string]net.IP{}
+	aRecords := map[string]net.IP{}
+	cnameRecords := map[string]string{}
 	for envelope := range envelopes {
 		if envelope.Error != nil {
 			return nil, envelope.Error
@@ -38,11 +40,17 @@ func ReadZoneEntries(dnsServer net.Addr, key *conf.TsigKey, zone string) (*Zone,
 		for _, record := range records {
 			switch record := record.(type) {
 			case *dns.A:
-				m[record.Hdr.Name] = record.A
+				aRecords[record.Hdr.Name] = record.A
 			case *dns.AAAA:
-				m[record.Hdr.Name] = record.AAAA
+				aRecords[record.Hdr.Name] = record.AAAA
+			case *dns.CNAME:
+				cnameRecords[record.Hdr.Name] = record.Target
 			}
 		}
 	}
-	return &Zone{Server: dnsServer, M: m}, nil
+	return &Zone{
+		Server:       dnsServer,
+		ARecords:     aRecords,
+		CNAMERecords: cnameRecords,
+	}, nil
 }

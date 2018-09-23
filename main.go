@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 )
 
 func main() {
@@ -43,6 +44,8 @@ func main() {
 	}
 	fmt.Println(localZone)
 	// 2) Start listening for DNS update requests from peers (and/or DHCP servers)
+	xform.StartServer(config, key)
+	time.Sleep(5 * time.Minute) // FIXME temporary for testing
 	// 3) Zone transfer from all peers to augment transient structures
 	// 4) Clean up any stale rendezvous records
 	// 5) Prioritize A/AAAA records for local networks, and update CNAME rendezvous records in local primary server

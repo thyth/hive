@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-func StartServer(config conf.Configuration, key conf.TsigKey) {
+func StartServer(config *conf.Configuration, key *conf.TsigKey) {
 	server := &dns.Server{
 		Addr: config.BindAddress.String() + ":53",
 		Net: "udp",
@@ -21,13 +21,43 @@ func StartServer(config conf.Configuration, key conf.TsigKey) {
 	dns.HandleFunc(".", handlerGenerator(config, key))
 }
 
-func handlerGenerator(config conf.Configuration, key conf.TsigKey) func(dns.ResponseWriter, *dns.Msg) {
-	return func(w dns.ResponseWriter, r *dns.Msg) {
-		fmt.Println(r.String())
+func handlerGenerator(config *conf.Configuration, key *conf.TsigKey) func(dns.ResponseWriter, *dns.Msg) {
+	return func(w dns.ResponseWriter, request *dns.Msg) {
+		// TODO check if tsig is valid
+		if request.Opcode == dns.OpcodeUpdate {
+			// add/delete records
+			validZoneUpdate := false
+			for _, question := range request.Question {
+				if question.Name == config.SearchSuffix &&
+					question.Qclass == dns.ClassINET &&
+					question.Qtype == dns.TypeSOA {
+					validZoneUpdate = true
+				}
+			}
+			if validZoneUpdate {
+				for _, authority := range request.Ns {
+					switch authority := authority.(type) {
+					case *dns.CNAME:
+						fmt.Printf("%v proposes %s -> %s\n", w.RemoteAddr(),
+							authority.Hdr.Name, authority.Target)
+						// TODO callback
+					case *dns.A:
+						fmt.Printf("%v proposes %s -> %v\n", w.RemoteAddr(),
+							authority.Hdr.Name, authority.A)
+						// TODO callback
+					case *dns.AAAA:
+						fmt.Printf("%v proposes %s -> %v\n", w.RemoteAddr(),
+							authority.Hdr.Name, authority.AAAA)
+						// TODO callback
+					}
+				}
+			}
+		} else {
+			// TODO AXFRs
+			fmt.Println(request.String())
+		}
 		msg := &dns.Msg{}
-		msg.SetReply(r)
+		msg.SetReply(request)
 		w.WriteMsg(msg)
-
-		// TODO peer requests will be AXFRs when they initialize, and update records from DHCP servers
 	}
 }
