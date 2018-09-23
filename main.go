@@ -6,6 +6,7 @@ import (
 
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"time"
 )
@@ -44,7 +45,14 @@ func main() {
 	}
 	fmt.Println(localZone)
 	// 2) Start listening for DNS update requests from peers (and/or DHCP servers)
-	xform.StartServer(config, key)
+	xform.StartServer(config, key, &xform.PeerCallbacks{
+		CNAME: func(proposer net.Addr, name string, target string) {
+			fmt.Printf("%v proposed '%s' -> '%s'\n", proposer, name, target)
+		},
+		A: func(proposer net.Addr, name string, target net.IP) {
+			fmt.Printf("%v proposed '%s' -> '%v'\n", proposer, name, target)
+		},
+	})
 	time.Sleep(5 * time.Minute) // FIXME temporary for testing
 	// 3) Zone transfer from all peers to augment transient structures
 	// 4) Clean up any stale rendezvous records

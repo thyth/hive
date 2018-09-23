@@ -5,12 +5,22 @@ import (
 	"github.com/thyth/hive/conf"
 
 	"fmt"
+	"net"
 )
 
-func StartServer(config *conf.Configuration, key *conf.TsigKey) {
+type CNAMECallback func(proposer net.Addr, name string, target string)
+type ACallback func(proposer net.Addr, name string, target net.IP)
+
+type PeerCallbacks struct {
+	CNAME CNAMECallback
+	A     ACallback
+	AAAA  ACallback
+}
+
+func StartServer(config *conf.Configuration, key *conf.TsigKey, callbacks *PeerCallbacks) {
 	server := &dns.Server{
-		Addr: config.BindAddress.String() + ":53",
-		Net: "udp",
+		Addr:       config.BindAddress.String() + ":53",
+		Net:        "udp",
 		TsigSecret: map[string]string{key.ZoneName: key.Key},
 	}
 	go func() {
@@ -18,10 +28,10 @@ func StartServer(config *conf.Configuration, key *conf.TsigKey) {
 			panic(err)
 		}
 	}()
-	dns.HandleFunc(".", handlerGenerator(config, key))
+	dns.HandleFunc(".", handlerGenerator(config, key, callbacks))
 }
 
-func handlerGenerator(config *conf.Configuration, key *conf.TsigKey) func(dns.ResponseWriter, *dns.Msg) {
+func handlerGenerator(config *conf.Configuration, key *conf.TsigKey, callbacks *PeerCallbacks) func(dns.ResponseWriter, *dns.Msg) {
 	return func(w dns.ResponseWriter, request *dns.Msg) {
 		// TODO check if tsig is valid
 		if request.Opcode == dns.OpcodeUpdate {
@@ -36,19 +46,25 @@ func handlerGenerator(config *conf.Configuration, key *conf.TsigKey) func(dns.Re
 			}
 			if validZoneUpdate {
 				for _, authority := range request.Ns {
+					proposerHost, _, err := net.SplitHostPort(w.RemoteAddr().String())
+					if err != nil {
+						continue
+					}
+					proposer := &net.IPAddr{IP: net.ParseIP(proposerHost)}
+
 					switch authority := authority.(type) {
 					case *dns.CNAME:
-						fmt.Printf("%v proposes %s -> %s\n", w.RemoteAddr(),
-							authority.Hdr.Name, authority.Target)
-						// TODO callback
+						if callbacks != nil && callbacks.CNAME != nil {
+							callbacks.CNAME(proposer, authority.Hdr.Name, authority.Target)
+						}
 					case *dns.A:
-						fmt.Printf("%v proposes %s -> %v\n", w.RemoteAddr(),
-							authority.Hdr.Name, authority.A)
-						// TODO callback
+						if callbacks != nil && callbacks.A != nil {
+							callbacks.A(proposer, authority.Hdr.Name, authority.A)
+						}
 					case *dns.AAAA:
-						fmt.Printf("%v proposes %s -> %v\n", w.RemoteAddr(),
-							authority.Hdr.Name, authority.AAAA)
-						// TODO callback
+						if callbacks != nil && callbacks.AAAA != nil {
+							callbacks.AAAA(proposer, authority.Hdr.Name, authority.AAAA)
+						}
 					}
 				}
 			}
