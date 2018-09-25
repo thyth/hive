@@ -6,6 +6,7 @@ import (
 
 	"fmt"
 	"net"
+	"time"
 )
 
 type CNAMECallback func(proposer net.Addr, name string, target string)
@@ -59,7 +60,20 @@ func StartServer(config *conf.Configuration, key *conf.TsigKey, callbacks *PeerC
 func handlerGenerator(config *conf.Configuration, key *conf.TsigKey, callbacks *PeerCallbacks) func(dns.ResponseWriter, *dns.Msg) {
 	return func(w dns.ResponseWriter, request *dns.Msg) {
 		msg := &dns.Msg{}
-		// TODO check if tsig is valid
+		msg.SetReply(request)
+
+		// if tsig is absent or invalid...
+		if request.IsTsig() == nil || w.TsigStatus() != nil {
+			// TODO pending resolution of https://github.com/miekg/dns/issues/748
+			fmt.Println("DEBUG: Checking TSIG...")
+			fmt.Println(request.IsTsig())
+			fmt.Printf("Status: %v\n", w.TsigStatus())
+
+			// ... abort further processing
+			w.WriteMsg(msg)
+			return
+		}
+
 		if request.Opcode == dns.OpcodeUpdate {
 			// add/delete records
 			validZoneUpdate := false
@@ -93,6 +107,8 @@ func handlerGenerator(config *conf.Configuration, key *conf.TsigKey, callbacks *
 						}
 					}
 				}
+				// sign the reply
+				msg.SetTsig(key.ZoneName, key.Algorithm, 300, time.Now().Unix())
 			}
 		} else if request.Opcode == dns.OpcodeQuery {
 			// zone transfers
@@ -182,10 +198,7 @@ func handlerGenerator(config *conf.Configuration, key *conf.TsigKey, callbacks *
 					w.Hijack()
 				}
 			}
-		} else {
-			fmt.Println(request.String())
 		}
-		msg.SetReply(request)
 		w.WriteMsg(msg)
 	}
 }

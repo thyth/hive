@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func WriteUpdate(dnsServer net.Addr, config *conf.Configuration, key *conf.TsigKey, mapping Mapping) error {
+func WriteUpdate(dnsServer net.Addr, config *conf.Configuration, key *conf.TsigKey, mapping *Mapping) error {
 	msg := &dns.Msg{}
 	msg.Opcode = dns.OpcodeUpdate
 	msg.SetQuestion(config.SearchSuffix, dns.TypeSOA)
