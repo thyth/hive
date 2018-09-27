@@ -11,8 +11,8 @@ import (
 
 type CNAMECallback func(proposer net.Addr, name string, target string)
 type ACallback func(proposer net.Addr, name string, target net.IP)
-type SerialCallback func() uint32
-type TransferCallback func(zone string) []Mapping
+type SerialCallback func(zone string) uint32
+type TransferCallback func(zone string) []*Mapping
 
 type Mapping struct {
 	Name   string
@@ -64,11 +64,6 @@ func handlerGenerator(config *conf.Configuration, key *conf.TsigKey, callbacks *
 
 		// if tsig is absent or invalid...
 		if request.IsTsig() == nil || w.TsigStatus() != nil {
-			// TODO pending resolution of https://github.com/miekg/dns/issues/748
-			fmt.Println("DEBUG: Checking TSIG...")
-			fmt.Println(request.IsTsig())
-			fmt.Printf("Status: %v\n", w.TsigStatus())
-
 			// ... abort further processing
 			w.WriteMsg(msg)
 			return
@@ -116,7 +111,7 @@ func handlerGenerator(config *conf.Configuration, key *conf.TsigKey, callbacks *
 				if question.Qclass == dns.ClassINET &&
 					question.Qtype == dns.TypeAXFR {
 					zone := question.Name
-					var records []Mapping
+					var records []*Mapping
 					if callbacks != nil && callbacks.Transfer != nil {
 						records = callbacks.Transfer(zone)
 					}
@@ -137,7 +132,7 @@ func handlerGenerator(config *conf.Configuration, key *conf.TsigKey, callbacks *
 						},
 						Ns:      "ns." + zone,
 						Mbox:    "ns." + zone,
-						Serial:  callbacks.Serial(),
+						Serial:  callbacks.Serial(zone),
 						Refresh: config.TTL,
 						Retry:   config.TTL / 10,
 						Expire:  config.TTL * 2,
