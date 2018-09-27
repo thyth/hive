@@ -77,6 +77,7 @@ func main() {
 
 			// write updates
 			for name, target := range diff.CNAMERecords {
+				fmt.Printf("Writing rendezvous update '%s' -> '%s'\n", name, target)
 				if err := xform.WriteUpdate(config.LocalZone.Server, config, key, &xform.Mapping{
 					Name:   name,
 					Target: target,
@@ -99,7 +100,6 @@ func main() {
 		os.Exit(1)
 	}
 	rendezvousZone, err = xform.ReadZoneEntries(config.LocalZone.Server, key, config.SearchSuffix)
-	initialUpdateRequired := false
 	if err != nil {
 		fmt.Printf("Initializing new rendezvous zone; transfer from primary failed: %v\n", err)
 		rendezvousZone = &xform.Zone{
@@ -107,7 +107,6 @@ func main() {
 			ARecords:     map[string]net.IP{},
 			CNAMERecords: map[string]string{},
 		}
-		initialUpdateRequired = true
 	}
 	zoneByServer[config.LocalZone.Server.String()] = primaryZone
 	zoneByName[config.LocalZone.Suffix] = primaryZone
@@ -240,9 +239,8 @@ func main() {
 		},
 	})
 
-	if initialUpdateRequired {
-		localZoneUpdate()
-	}
+	// do an initial update on startup
+	localZoneUpdate()
 
 	select {}
 }
