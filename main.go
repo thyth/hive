@@ -265,10 +265,11 @@ func tranposePrimary(zone *xform.Zone, config *conf.Configuration) *xform.Zone {
 			continue
 		} else {
 			tranposedName = strings.TrimSuffix(name, config.LocalZone.Suffix) + config.SearchSuffix
+			tranposedName = strings.ToLower(tranposedName)
 		}
 		for _, localNet := range config.LocalNets {
 			if localNet.Contains(target) {
-				tranposed.CNAMERecords[tranposedName] = name
+				tranposed.CNAMERecords[tranposedName] = strings.ToLower(name)
 				break
 			}
 		}
@@ -292,8 +293,9 @@ func tranposePeer(zone *xform.Zone, peerSuffix, rendezvousSuffix string) *xform.
 			continue
 		} else {
 			tranposedName = strings.TrimSuffix(name, peerSuffix) + rendezvousSuffix
+			tranposedName = strings.ToLower(tranposedName)
 		}
-		tranposed.CNAMERecords[tranposedName] = name
+		tranposed.CNAMERecords[tranposedName] = strings.ToLower(name)
 	}
 	zone.Unlock()
 	return tranposed

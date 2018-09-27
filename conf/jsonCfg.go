@@ -16,9 +16,8 @@ type Configuration struct {
 	LocalNets    []*net.IPNet // e.g. [10.1.0.0/16]
 	LocalZone    *ZonePeer
 	SearchSuffix string      // e.g. rdvu.example.com.
-	Peers        []*ZonePeer // e.g. [10.0.0.2]
+	Peers        []*ZonePeer
 	BindAddress  net.Addr    // e.g. 10.1.0.2
-	ForwardAll   bool        // whether to pass through all DNS updates to the zone primary, or just rendezvous CNAMEs
 	TTL          uint32      // record time to live in seconds
 }
 
@@ -33,13 +32,11 @@ type parseConfiguration struct {
 	SearchSuffix string       `json:"searchSuffix"`
 	Peers        []*parsePeer `json:"peers"`
 	BindAddress  string       `json:"bindAddress"`
-	ForwardAll   bool         `json:"forwardAll"`
 	TTL          uint32       `json:"ttl"`
 }
 
 func (pc *parseConfiguration) inhabitConfig(c *Configuration) error {
 	c.SearchSuffix = pc.SearchSuffix
-	c.ForwardAll = pc.ForwardAll
 	c.TTL = pc.TTL
 	if c.TTL < 300 {
 		return fmt.Errorf("ttl must be at least 300 seconds but got %d seconds", c.TTL)
