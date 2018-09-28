@@ -36,13 +36,19 @@ mapping to off-site identifiers.
 ## How?
 
 A Hive instance is configured to run on each site with knowledge of the local DNS search path (e.g. `west.example.com`),
-and the local IP address range (e.g. `10.0.0.0/16`). It presents itself as an RFC2136 compatible DNS server, listening
-for DHCP driven dynamic DNS update commands from both the local DHCP server, and the Hive instances of other sites.
+the local IP address range (e.g. `10.0.0.0/16`), and the local authoritative DNS master (e.g. `10.0.0.1`). It presents
+itself as a DNS server that listens for RFC1996 zone update notifications from the local DNS master, initiates zone
+transfers from that master (using RFC1995 IFXRs when possible), and listens for RFC2136 dynamic DNS update commands from
+the Hive instances of other sites.
 
 These host device records are transformed to the rendezvous DNS search path suffix (e.g. `rdvu.example.com`), and then
 forwarded as CNAME mappings via RFC2136 updates to the site's primary DNS server. Host address mappings from the local
-IP address range will supersede any remote IP address range. Host address mappings from remote IP address ranges will be
-dropped if a mapping from a local IP address range is active.
+master will supersede any remote peer mappings.
+
+The role of each Hive instance is to augment the local DNS master records and communicate the necessary information to
+its peers at other sites. Dynamic update queries from e.g. DHCP servers, and all client requests shall be served only
+by that DNS master. This minimizes the complexity of rendezvous coordination, best interoperates with typical dynamic
+DNS/DHCP site configurations, and assures minimal network disruption in the event of a Hive instance failure.
 
 ## Result
 
@@ -54,3 +60,15 @@ dropped if a mapping from a local IP address range is active.
 - For `foo` and `bar` both tunneled to the `west` and `east` sites trying to connect to each other, both clients will
   resolve based on their own tunnel priority order, but should achieve connectivity regardless. In practice, multi-site
   tunneling clients should order their tunnels from highest to lowest tunnel link bandwidth for best performance.
+
+## Site Configuration
+
+- DHCP Server (e.g. ISC dhcpd) configured to update A and PTR records on the local DNS master (i.e. `zone` designating 
+  the local DNS master server as `primary` for `west.example.com`). ISC dhcpd configuration permits only one DNS server
+  for updates (sent as RFC2136 update commands).
+- DNS Server (e.g. ISC BIND) configured as the authoritative master for both the local site namespace (e.g.
+  `west.example.com`) and the rendezvous namespace (e.g. `rdvu.example.com`). The local site namespace shall be
+  configured to notify the Hive instance as a "slave" DNS server (e.g. `notify explicit;` and `also-notify { <hive
+  instance IP> };`). The local Hive instance must be permitted to perform zone transfers (e.g. `allow-transfer { ... };`
+  ).
+- For security reasons, both the update commands and zone transfer should be TSIG authenticated.

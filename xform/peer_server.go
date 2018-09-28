@@ -73,9 +73,7 @@ func handlerGenerator(config *conf.Configuration, key *conf.TsigKey, callbacks *
 			// add/delete records
 			validZoneUpdate := false
 			for _, question := range request.Question {
-				if question.Name == config.SearchSuffix &&
-					question.Qclass == dns.ClassINET &&
-					question.Qtype == dns.TypeSOA {
+				if question.Qtype == dns.TypeSOA {
 					validZoneUpdate = true
 				}
 			}

@@ -8,19 +8,24 @@ import (
 	"time"
 )
 
-func WriteUpdate(dnsServer net.Addr, config *conf.Configuration, key *conf.TsigKey, mapping *Mapping) error {
+func WriteUpdate(dnsServer net.Addr, ttl uint32, key *conf.TsigKey, mapping *Mapping, zone string) error {
 	msg := &dns.Msg{}
 	msg.Opcode = dns.OpcodeUpdate
-	msg.SetQuestion(config.SearchSuffix, dns.TypeSOA)
+	msg.SetQuestion(zone, dns.TypeSOA)
 	var rr dns.RR
+	class := uint16(dns.ClassINET)
+	if mapping.IP == nil && mapping.Target == "" {
+		class = uint16(dns.ClassANY)
+		ttl = 0
+	}
 	if mapping.IP != nil {
 		if len(mapping.IP) == net.IPv4len {
 			rr = &dns.A{
 				Hdr: dns.RR_Header{
 					Name:   mapping.Name,
 					Rrtype: dns.TypeA,
-					Class:  dns.ClassINET,
-					Ttl:    config.TTL,
+					Class:  class,
+					Ttl:    ttl,
 				},
 				A: mapping.IP,
 			}
@@ -29,8 +34,8 @@ func WriteUpdate(dnsServer net.Addr, config *conf.Configuration, key *conf.TsigK
 				Hdr: dns.RR_Header{
 					Name:   mapping.Name,
 					Rrtype: dns.TypeAAAA,
-					Class:  dns.ClassINET,
-					Ttl:    config.TTL,
+					Class:  class,
+					Ttl:    ttl,
 				},
 				AAAA: mapping.IP,
 			}
@@ -40,8 +45,8 @@ func WriteUpdate(dnsServer net.Addr, config *conf.Configuration, key *conf.TsigK
 			Hdr: dns.RR_Header{
 				Name:   mapping.Name,
 				Rrtype: dns.TypeCNAME,
-				Class:  dns.ClassINET,
-				Ttl:    config.TTL,
+				Class:  class,
+				Ttl:    ttl,
 			},
 			Target: mapping.Target,
 		}

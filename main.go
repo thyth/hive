@@ -78,10 +78,10 @@ func main() {
 			// write updates
 			for name, target := range diff.CNAMERecords {
 				fmt.Printf("Writing rendezvous update '%s' -> '%s'\n", name, target)
-				if err := xform.WriteUpdate(config.LocalZone.Server, config, key, &xform.Mapping{
+				if err := xform.WriteUpdate(config.LocalZone.Server, config.TTL, key, &xform.Mapping{
 					Name:   name,
 					Target: target,
-				}); err != nil {
+				}, config.SearchSuffix); err != nil {
 					fmt.Printf("Error writing update to rendezvous zone: %v\n", err)
 					return
 				}
@@ -147,6 +147,16 @@ func main() {
 				runUpdate = true
 			}
 			zone.Unlock()
+			if zone == primaryZone {
+				fmt.Printf("Forwarding primary update '%s' -> '%s'\n", name, target) // TODO deletions?
+				if err := xform.WriteUpdate(config.LocalZone.Server, config.TTL, key, &xform.Mapping{
+					Name:   name,
+					Target: target,
+				}, config.LocalZone.Suffix); err != nil {
+					fmt.Printf("Error forwarding update to primary zone: %v\n", err)
+					return
+				}
+			}
 			if runUpdate {
 				localZoneUpdate()
 			}
@@ -168,6 +178,16 @@ func main() {
 				runUpdate = true
 			}
 			zone.Unlock()
+			if zone == primaryZone {
+				fmt.Printf("Forwarding primary update '%s' -> '%s'\n", name, target)
+				if err := xform.WriteUpdate(config.LocalZone.Server, config.TTL, key, &xform.Mapping{
+					Name: name,
+					IP:   target,
+				}, config.LocalZone.Suffix); err != nil {
+					fmt.Printf("Error forwarding update to primary zone: %v\n", err)
+					return
+				}
+			}
 			if runUpdate {
 				localZoneUpdate()
 			}
@@ -189,6 +209,16 @@ func main() {
 				runUpdate = true
 			}
 			zone.Unlock()
+			if zone == primaryZone {
+				fmt.Printf("Forwarding primary update '%s' -> '%s'\n", name, target)
+				if err := xform.WriteUpdate(config.LocalZone.Server, config.TTL, key, &xform.Mapping{
+					Name: name,
+					IP:   target,
+				}, config.LocalZone.Suffix); err != nil {
+					fmt.Printf("Error forwarding update to primary zone: %v\n", err)
+					return
+				}
+			}
 			if runUpdate {
 				localZoneUpdate()
 			}
